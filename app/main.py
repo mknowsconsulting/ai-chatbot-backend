@@ -1,0 +1,230 @@
+"""
+AI Chatbot LMS - Main Application Entry Point
+FastAPI Backend API (Microservice Architecture)
+"""
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from contextlib import asynccontextmanager
+import logging
+
+from app.core.config import settings
+from app.core.database import init_databases, close_databases
+from app.middleware.error_handler import (
+    http_exception_handler,
+    validation_exception_handler,
+    general_exception_handler
+)
+
+# Import routers
+from app.api import chat, auth
+
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan events (startup & shutdown)"""
+    
+    # ============================================
+    # STARTUP
+    # ============================================
+    logger.info("")
+    logger.info("=" * 70)
+    logger.info("🚀 STARTING AI CHATBOT LMS BACKEND API")
+    logger.info("=" * 70)
+    logger.info(f"📱 App Name     : {settings.APP_NAME}")
+    logger.info(f"📌 Version      : {settings.APP_VERSION}")
+    logger.info(f"🌍 Environment  : {settings.ENVIRONMENT}")
+    logger.info(f"🐛 Debug Mode   : {settings.DEBUG}")
+    logger.info(f"🔌 Port         : {settings.PORT}")
+    logger.info(f"🤖 AI Model     : {settings.DEEPSEEK_MODEL}")
+    logger.info(f"🔗 CORS Origins : {settings.cors_origins_list}")
+    logger.info("=" * 70)
+    
+    # Initialize databases
+    await init_databases()
+    
+    logger.info("=" * 70)
+    logger.info("✅ BACKEND API READY!")
+    logger.info(f"📡 Listening on: http://{settings.HOST}:{settings.PORT}")
+    logger.info(f"📚 API Docs    : http://{settings.HOST}:{settings.PORT}/docs")
+    logger.info("=" * 70)
+    logger.info("")
+    
+    yield
+    
+    # ============================================
+    # SHUTDOWN
+    # ============================================
+    logger.info("")
+    logger.info("=" * 70)
+    logger.info("👋 SHUTTING DOWN AI CHATBOT LMS BACKEND API")
+    logger.info("=" * 70)
+    
+    await close_databases()
+    
+    logger.info("✅ Shutdown complete")
+    logger.info("=" * 70)
+    logger.info("")
+
+
+# Initialize FastAPI application
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    description="""
+    ## AI Chatbot for LMS - Backend API
+    
+    **Microservice Architecture** - Pure API backend for AI chatbot integration.
+    
+    ### Features:
+    - 🤖 AI-powered chat responses (DeepSeek)
+    - 📚 FAQ search with RAG (Qdrant)
+    - 👥 Multi-role support (Public, Student, Admin)
+    - 🌐 Multi-language (Indonesian, English)
+    - �� Analytics & rate limiting
+    - 🔐 JWT authentication
+    
+    ### Rate Limits:
+    - **Public**: 20 requests/day
+    - **Student**: 100 requests/day
+    - **Admin**: Unlimited
+    
+    ### Authentication:
+    Students must login via `/api/auth/student-login` to get JWT token.
+    Include token in `Authorization: Bearer <token>` header.
+    """,
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
+)
+
+# Add CORS Middleware - FIXED!
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,  # ← FIXED: Use cors_origins_list property
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Add Error Handlers
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
+
+
+# ============================================
+# ROOT & HEALTH CHECK ENDPOINTS
+# ============================================
+
+@app.get("/", tags=["Root"])
+async def root():
+    """Root endpoint - API information"""
+    return {
+        "app": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "status": "running",
+        "environment": settings.ENVIRONMENT,
+        "endpoints": {
+            "docs": "/docs",
+            "redoc": "/redoc",
+            "health": "/health",
+            "chat": "/api/chat",
+            "auth": "/api/auth/student-login"
+        },
+        "message": "AI Chatbot LMS Backend API is running! Visit /docs for API documentation."
+    }
+
+
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """Detailed health check endpoint"""
+    from app.core.database import ai_db, lms_db
+    from app.services.qdrant_service import qdrant_service
+    
+    # Check AI Database
+    ai_db_status = "connected"
+    ai_db_details = {}
+    try:
+        sessions_count = await ai_db.get_table_count('chat_sessions')
+        messages_count = await ai_db.get_table_count('chat_messages')
+        ai_db_details = {
+            "sessions": sessions_count,
+            "messages": messages_count
+        }
+    except Exception as e:
+        ai_db_status = f"error: {str(e)}"
+    
+    # Check LMS Database
+    lms_db_status = "connected" if lms_db.is_connected() else "not configured"
+    
+    # Check Qdrant
+    qdrant_status = "connected"
+    qdrant_details = {}
+    try:
+        faq_id_info = qdrant_service.get_collection_info(settings.QDRANT_COLLECTION_FAQ_ID)
+        faq_en_info = qdrant_service.get_collection_info(settings.QDRANT_COLLECTION_FAQ_EN)
+        qdrant_details = {
+            "faq_id_points": faq_id_info.get("points_count", 0),
+            "faq_en_points": faq_en_info.get("points_count", 0)
+        }
+    except Exception as e:
+        qdrant_status = f"error: {str(e)}"
+    
+    return {
+        "status": "healthy",
+        "app": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "environment": settings.ENVIRONMENT,
+        "services": {
+            "api": {
+                "status": "running",
+                "port": settings.PORT
+            },
+            "ai_database": {
+                "status": ai_db_status,
+                "type": "SQLite",
+                "details": ai_db_details
+            },
+            "lms_database": {
+                "status": lms_db_status,
+                "type": "PostgreSQL"
+            },
+            "qdrant": {
+                "status": qdrant_status,
+                "details": qdrant_details
+            },
+            "deepseek": {
+                "status": "configured",
+                "model": settings.DEEPSEEK_MODEL
+            }
+        }
+    }
+
+
+# ============================================
+# INCLUDE API ROUTERS
+# ============================================
+
+app.include_router(chat.router, prefix="/api", tags=["Chat"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "app.main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.DEBUG
+    )

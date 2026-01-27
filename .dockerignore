@@ -34,6 +34,3 @@ logs/
 tests/
 *.md
 .env.example
-Procfile
-railway.json
-requirements.txt

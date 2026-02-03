@@ -46,8 +46,8 @@ class QdrantService:
             self.client = QdrantClient(host=self.host, port=self.port)
             logger.info(f"✅ Qdrant connected at {self.host}:{self.port}")
         except Exception as e:
-            logger.error(f"❌ Failed to connect to Qdrant: {e}")
-            raise
+            logger.warning(f"⚠️ Failed to connect to Qdrant: {e}")
+            self.client = None
     
     def create_collection(self, collection_name: str):
         """
@@ -237,6 +237,10 @@ class QdrantService:
             )
         """
         try:
+            # Check if Qdrant is available
+            if not self.client:
+                logger.warning("Qdrant not available, returning empty results")
+                return []
             # Generate embedding for query
             query_embedding = embeddings_service.encode_single(query)
             

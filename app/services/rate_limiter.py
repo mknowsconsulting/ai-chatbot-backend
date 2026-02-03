@@ -28,8 +28,6 @@ class RateLimiter:
         # Rate limits from config
         self.limits = {
             "public": settings.RATE_LIMIT_PUBLIC,
-            "student": settings.RATE_LIMIT_STUDENT,
-            "admin": settings.RATE_LIMIT_ADMIN
         }
     
     async def check_rate_limit(

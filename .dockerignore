@@ -29,8 +29,9 @@ dmypy.json
 .vscode/
 .idea/
 *.iml
-data/
 logs/
 tests/
-*.md
 .env.example
+README_OLD.md
+*.backup_*
+apply_public_security.py

@@ -21,11 +21,6 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     
-    # Security
-    JWT_SECRET_KEY: str
-    JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 1440
-    
     # DeepSeek API
     DEEPSEEK_API_KEY: str
     DEEPSEEK_API_BASE: str = "https://api.deepseek.com/v1"
@@ -40,17 +35,8 @@ class Settings(BaseSettings):
     # Databases
     AI_DB_PATH: str = "./data/databases/ai_chat.db"
     
-    # LMS Database (Optional)
-    LMS_DB_HOST: str = "localhost"
-    LMS_DB_PORT: int = 5432
-    LMS_DB_NAME: str = "lms_kampus"
-    LMS_DB_USER: str = "lms_readonly"
-    LMS_DB_PASSWORD: str = ""
-    
     # Rate Limiting
     RATE_LIMIT_PUBLIC: int = 20
-    RATE_LIMIT_STUDENT: int = 100
-    RATE_LIMIT_ADMIN: int = 1000
     
     # Embeddings
     EMBEDDING_MODEL: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"

@@ -20,7 +20,7 @@ from app.middleware.error_handler import (
 )
 
 # Import routers
-from app.api import chat_public
+from app.api import chat_secured as chat, auth_secured as auth
 
 # Configure logging
 logging.basicConfig(
@@ -220,7 +220,8 @@ async def health_check():
 # INCLUDE API ROUTERS
 # ============================================
 
-app.include_router(chat_public.router, prefix="/api", tags=["Chat"])
+app.include_router(chat.router, prefix="/api", tags=["Chat"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 
 
 if __name__ == "__main__":

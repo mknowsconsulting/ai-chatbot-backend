@@ -3,6 +3,6 @@ API Module
 Contains all API endpoints
 """
 
-from . import chat, auth
+from . import chat_public
 
-__all__ = ["chat", "auth"]
+__all__ = ["chat_public"]

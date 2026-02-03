@@ -1,10 +1,11 @@
 """
-Mock Student Data Service
-For testing without actual LMS database connection
+Mock Student Data Service - SECURED VERSION
+With password hashes for authentication
 """
 
 from typing import Optional, Dict, Any, List
 import logging
+from app.core.security import hash_password
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 class MockStudentDataService:
     """Mock student data for testing"""
     
-    # Mock data
+    # Mock data with password hashes
     MOCK_STUDENTS = {
         "12345": {
             "id": 1,
@@ -23,7 +24,8 @@ class MockStudentDataService:
             "semester": 3,
             "email": "budi@student.kampusgratis.com",
             "phone": "081234567890",
-            "status": "active"
+            "status": "active",
+            "password_hash": hash_password("password123")  # Default password: password123
         },
         "67890": {
             "id": 2,
@@ -34,7 +36,8 @@ class MockStudentDataService:
             "semester": 1,
             "email": "siti@student.kampusgratis.com",
             "phone": "081234567891",
-            "status": "active"
+            "status": "active",
+            "password_hash": hash_password("password123")  # Default password: password123
         }
     }
     
